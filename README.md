@@ -1,6 +1,6 @@
 # Ersky9x Utils for Mac OS X
 
-Ersky9X is an open source radio firmware avaivalable [url=http://www.er9x.com]here[/url].
+Ersky9X is an open source radio firmware avaivalable [http://www.er9x.com](here).
 
 This repository holds general utilities intended to be run in a Mac OS X environment to perform specific tasks for the above firmware.
 
