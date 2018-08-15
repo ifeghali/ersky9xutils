@@ -1,0 +1,80 @@
+#!/bin/bash
+# vim: autoindent tabstop=4 shiftwidth=4 expandtab softtabstop=4 filetype=sh
+################################################################################
+# vagen is a voice alert generator for the ersky9 firmware                     #
+#                                                                              #
+# This program is free software: you can redistribute it and/or modify         #
+# it under the terms of the GNU General Public License as published by         #
+# the Free Software Foundation, either version 3 of the License, or            #
+# (at your option) any later version.                                          #
+#                                                                              #
+# This program is distributed in the hope that it will be useful,              #
+# but WITHOUT ANY WARRANTY; without even the implied warranty of               #
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the                #
+# GNU General Public License for more details.                                 #
+#                                                                              #
+# You should have received a copy of the GNU General Public License            #
+# along with this program.  If not, see <https://www.gnu.org/licenses/>.       #
+################################################################################
+# Author: Igor Feghali <ifeghali@php.net>                                      #
+################################################################################
+
+VOICE=Luciana
+WPM=200
+FREQ=16000
+
+error() {
+    case $1 in
+        1)
+            cat >&2 <<EOF
+ERROR: wrong number of arguments
+
+usage: $0 'phrase' [output file]
+
+for batch mode you can write output path to ~/.vagen and omit the second
+argument. in that case file name is generated automatically.
+EOF
+            ;;
+        2)
+            echo 'ERROR: cannot create tmp file' >&2
+            ;;
+        3)
+            echo 'ERROR: ~/.vagen not found' >&2
+            ;;
+    esac
+    exit $1
+}
+
+if [[ $# -lt 1 ]]
+then
+    error 1
+fi
+
+if [[ $# -lt 2 ]]
+then
+    outfile=$(cat ~/.vagen 2>/dev/null) || error 3
+    outfile=$outfile/$(echo $1 | tr -Cd '[:alnum:]' | cut -c 1-8).wav
+else
+    outfile=$2
+fi
+
+FAIFF=$(mktemp) || error 2
+FWAVE=$(mktemp) || error 2
+FOUTF=$(mktemp) || error 2
+phrase=$1
+
+# Create Voice File
+say -v "$VOICE" "$phrase" -o $FAIFF -r $WPM
+
+# Convert AIFF to WAV
+afconvert -f WAVE -d LEI16@$FREQ -c 1 $FAIFF $FWAVE
+
+# Convert wav offset from 4096 to 44
+dd if=$FWAVE bs=1 count=35 of=$FOUTF >&/dev/null
+dd if=$FWAVE bs=1 skip=4087 seek=35 conv=notrunc of=$FOUTF >&/dev/null
+
+# Output file
+cp -vi $FOUTF "$outfile"
+
+# Remove temp files
+rm $FAIFF $FWAVE $FOUTF
