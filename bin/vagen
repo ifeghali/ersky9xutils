@@ -19,20 +19,18 @@
 # Author: Igor Feghali <ifeghali@php.net>                                      #
 ################################################################################
 
-VOICE=Luciana
-WPM=200
-FREQ=16000
-
 error() {
     case $1 in
         1)
             cat >&2 <<EOF
+
 ERROR: wrong number of arguments
 
 usage: $0 'phrase' [output file]
 
 for batch mode you can write output path to ~/.vagen and omit the second
 argument. in that case file name is generated automatically.
+
 EOF
             ;;
         2)
@@ -41,19 +39,38 @@ EOF
         3)
             echo 'ERROR: ~/.vagen not found' >&2
             ;;
+        4)
+            echo 'ERROR: OUTPATH is missing' >&2
+            ;;
     esac
     exit $1
 }
 
-if [[ $# -lt 1 ]]
+# Checking user config file
+if [ ! -e ~/.vagen ]
+then
+    cat > ~/.vagen <<EOF || error 3
+VOICE=Luciana
+WPM=200
+OUTPATH=
+EOF
+fi
+
+# Loading user config
+source ~/.vagen
+
+if [ $# -lt 1 ]
 then
     error 1
 fi
 
-if [[ $# -lt 2 ]]
+if [ $# -lt 2 ]
 then
-    outfile=$(cat ~/.vagen 2>/dev/null) || error 3
-    outfile=$outfile/$(echo $1 | tr -Cd '[:alnum:]' | cut -c 1-8).wav
+    if [ -z "$OUTPATH" ]
+    then
+        error 4
+    fi
+    outfile=$OUTPATH/$(echo $1 | tr -Cd '[:alnum:]' | cut -c 1-8).wav
 else
     outfile=$2
 fi
@@ -67,7 +84,7 @@ phrase=$1
 say -v "$VOICE" "$phrase" -o $FAIFF -r $WPM
 
 # Convert AIFF to WAV
-afconvert -f WAVE -d LEI16@$FREQ -c 1 $FAIFF $FWAVE
+afconvert -f WAVE -d LEI16@16000 -c 1 $FAIFF $FWAVE
 
 # Convert wav offset from 4096 to 44
 dd if=$FWAVE bs=1 count=35 of=$FOUTF >&/dev/null
